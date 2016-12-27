@@ -1,0 +1,18 @@
+AddDefaultCharset utf-8
+
+Options +FollowSymlinks
+RewriteEngine On
+
+# Redirect all .html files to 404 page
+RewriteRule .+\.html$ - [R=404,END]
+
+# Prevent /index from being accessed directly
+RewriteCond $0 !=index [NC]
+# If URL doesn't end with ".html"
+RewriteCond $0 !.+\.html$
+# If file doesn't exist
+RewriteCond %{REQUEST_FILENAME} !-f
+# If file + ".html" does exist
+RewriteCond %{REQUEST_FILENAME}.html -f
+# Redirect to the html file
+RewriteRule .+ $0.html [END]

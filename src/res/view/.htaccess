@@ -1,0 +1,20 @@
+Options +FollowSymlinks
+RewriteEngine On
+
+RewriteBase /collab-vm/
+# Redirect directories to files
+RewriteRule ^(.+)/$ view/$1 [R=302,L]
+
+
+# Redirect /collab-vm/view/Link1#./Link3 -> /collab-vm/view/Link3
+#RewriteCond %{QUERY_STRING} 
+#RewriteRule ^.*#\./(.*)$ . [R=302,L]
+
+# Rewrite VM names
+# "/collab-vm/index.html" is used instead of just "index.html"
+# to prevent a 404 when /collab-vm/view/index.html is requested
+RewriteRule .+ /collab-vm/index.html [END]
+
+# Redirect index to VM list
+RewriteRule ^$ . [R=302,END]
+
