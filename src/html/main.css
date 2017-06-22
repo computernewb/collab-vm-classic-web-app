@@ -128,6 +128,7 @@ table {
 	line-height: 24px;
 	white-space: -o-pre-wrap; /* Opera */
 	word-wrap: break-word; /* Internet Explorer 5.5+ */
+	display: inline-block;
 }
 
 .message-pane li>div p {
