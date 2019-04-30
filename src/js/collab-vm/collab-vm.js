@@ -651,7 +651,7 @@ $(function() {
 		if (!hasVoted) {
 			hasVoted = true;
 			tunnel.sendMessage("chat", "vmvote 1");
-			$("#vote-alert").hide();
+			//$("#vote-alert").hide();
 		}
 	});
 	
@@ -659,7 +659,7 @@ $(function() {
 		if (!hasVoted) {
 			hasVoted = true;
 			tunnel.sendMessage("chat", "vmvote 0");
-			$("#vote-alert").hide();
+			//$("#vote-alert").hide();
 		}
 	});
 	
