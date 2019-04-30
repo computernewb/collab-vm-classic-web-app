@@ -644,13 +644,13 @@ $(function() {
 	
 	$("#vote-btn").click(function() {
 		hasVoted = true;
-		tunnel.sendMessage("vote", "1");
+		tunnel.sendMessage("chat", "vmvote 1");
 	});
 	
 	$("#vote-yes").click(function() {
 		if (!hasVoted) {
 			hasVoted = true;
-			tunnel.sendMessage("vote", "1");
+			tunnel.sendMessage("chat", "vmvote 1");
 			$("#vote-alert").hide();
 		}
 	});
@@ -658,7 +658,7 @@ $(function() {
 	$("#vote-no").click(function() {
 		if (!hasVoted) {
 			hasVoted = true;
-			tunnel.sendMessage("vote", "0");
+			tunnel.sendMessage("chat", "vmvote 0");
 			$("#vote-alert").hide();
 		}
 	});
