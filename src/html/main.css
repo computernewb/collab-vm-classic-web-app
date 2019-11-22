@@ -61,12 +61,12 @@ table {
 	font-style: italic;
 }
 .admin.list-group-item {
-    font-weight: bold;
-    color: red;
+    font-weight: bold !important;
+    color: red !important;
 }
 .dev.list-group-item {
-    font-weight: bold;
-    color: blue;
+    font-weight: bold !important;
+    color: blue !important;
 }
 .waiting-turn.list-group-item {
     background-color: #FFFFB3;
