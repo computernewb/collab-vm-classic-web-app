@@ -1060,7 +1060,9 @@ $(function() {
 			if(parameters[i] !== username || usersData[paramaters[i]][0] != parameters[i+1]) {
 				// add user to the user list if they don't exist at all,
 				// otherwise just update the user's rank from the server
-				if(users.find((u)=> u==parameters[i]) == undefined) {
+				if(users.find(function(u) {
+					return u==parameters[i];
+				}) == undefined) {
 					users.push(parameters[i]);
 				}
 				var rank = parseInt(parameters[i+1]);
