@@ -19,7 +19,7 @@ const paths = {
 	]
 };
 
-function HiddentmlTask() {
+function HtmlTask() {
 	return gulp.src([paths.html])
 		.pipe(inject(gulp.src(['build/all.min.js', 'build/*.css'], {read: false}), { ignorePath: 'build', addPrefix: 'collab-vm' }))
 		.pipe(inject(gulp.src('src/templates/*.html').pipe(rename(function(path) {
