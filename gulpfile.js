@@ -51,6 +51,21 @@ function ResTask() {
 		.pipe(gulp.dest('build'));
 }
 
+function GuacTask() {
+	return gulp.src('src/js/guacamole/*.js')
+		.pipe(sourcemaps.init())
+			// fun stuff
+			.pipe(terser())
+			.pipe(concat('guacamole.min.js'))
+		.pipe(sourcemaps.write('.'))
+		.pipe(gulp.dest('src/html'));
+}
+
+
+// Task export definitions
+
+exports.guacamole = GuacTask;
+
 // default task
 exports.default = gulp.series(
 	JsTask,
