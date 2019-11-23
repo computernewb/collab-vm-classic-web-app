@@ -1,17 +1,27 @@
-var gulp = require('gulp'),
+const gulp = require('gulp'),
 	rename = require('gulp-rename'),
 	concat = require('gulp-concat'),
 	inject = require('gulp-inject'),
 	htmlmin = require('gulp-htmlmin'),
-	uglify = require('gulp-uglify'),
+	terser = require('gulp-terser'),
+	sourcemaps = require('gulp-sourcemaps')
 	fs = require('fs');
 
-gulp.task('default', ['html']);
+// paths for stuff
+const paths = {
+	html: "src/html/*.html",
+	js: [
+		'src/js/collab-vm/jquery.history.js', 
+		'src/js/guacamole/**/*.js', 
+		'src/js/collab-vm/common.js', 
+		'src/js/collab-vm/en-us-qwerty.js', 
+		'src/js/collab-vm/collab-vm.js'
+	]
+};
 
-gulp.task('html', ['js', 'res'], function() {
-	return gulp.src('src/html/*.html')
-		.pipe(inject(gulp.src(['build/all.min.js', 'build/*.css'], {read: false}),
-			{ ignorePath: 'build', addPrefix: 'collab-vm' }))
+function HtmlTask() {
+	return gulp.src([paths.html])
+		.pipe(inject(gulp.src(['build/all.min.js', 'build/*.css'], {read: false}), { ignorePath: 'build', addPrefix: 'collab-vm' }))
 		.pipe(inject(gulp.src('src/templates/*.html').pipe(rename(function(path) {
 			// This is a trick to use gulp-inject as a simple html template engine
 			// It switches the filename and extension so multiple templates can be used
@@ -24,24 +34,32 @@ gulp.task('html', ['js', 'res'], function() {
 		}))
 		.pipe(htmlmin(JSON.parse(fs.readFileSync('html-minifier.conf', 'utf8'))))
 		.pipe(gulp.dest('build'));
-});
+}
 
-gulp.task('js', function() {
-	return gulp.src(['src/js/collab-vm/jquery.history.js', 'src/js/guacamole/**/*.js', 'src/js/collab-vm/common.js', 'src/js/collab-vm/en-us-qwerty.js', 'src/js/collab-vm/collab-vm.js'])
-		.pipe(concat('all.min.js'))
-		.pipe(uglify())
+function JsTask() {
+	return gulp.src(paths.js)
+		.pipe(sourcemaps.init())
+			// fun stuff
+			.pipe(terser())
+			.pipe(concat('all.min.js'))
+		.pipe(sourcemaps.write('.'))
 		.pipe(gulp.dest('build'));
-});
+}
 
-gulp.task('res', function() {
+function ResTask() {
 	return gulp.src('src/res/**/*',  { dot: true /* Include .htaccess files */ })
 		.pipe(gulp.dest('build'));
-});
+}
 
-gulp.task('guacamole', function() {
-	return gulp.src('src/js/guacamole/*.js')
-		.pipe(concat('guacamole.min.js'))
-		.pipe(uglify())
-		.pipe(gulp.dest('src/html'));
-});
+function WatchTask() {
+	
+	
+}
 
+// default task
+exports.default = gulp.series(
+	JsTask,
+	ResTask,
+	HtmlTask
+	// TODO: watch task
+);
