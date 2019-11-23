@@ -1045,7 +1045,7 @@ $(function() {
 					clearInterval(voteInterval);
 				if (uploadInterval !== null)
 					clearInterval(uploadInterval);
-				
+
 				// Redirect to VM list
 				History.pushState(null, null, rootDir);
 				break;
@@ -1057,20 +1057,18 @@ $(function() {
 		debugLog(parameters);
 		var num = parseInt(parameters[0])*2 + 1;
 		for (var i = 1; i < num; i += 2) {
-			if(parameters[i] !== username || usersData[paramaters[i]][0] != parameters[i+1]) {
+			if(parameters[i] !== username || usersData[parameters[i]][0] != parameters[i+1]) {
 				// add user to the user list if they don't exist at all,
-				// otherwise just update the user's rank from the server
-				if(users.find((u)=> u==parameters[i]) == undefined) {
+				// otherwise only update the user's rank from the server
+				if(users.find((u)=> u == parameters[i]) == undefined)
 					users.push(parameters[i]);
-				}
+
 				var rank = parseInt(parameters[i+1]);
 				usersData[parameters[i]] = [rank, 0];
 			}
 		}
 		displayTable();
 	};
-	
-
 	
 	guac.onremuser = function(parameters) {
 		debugLog("Remove user: ");
