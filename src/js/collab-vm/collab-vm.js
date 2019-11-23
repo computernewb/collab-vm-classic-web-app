@@ -1057,7 +1057,7 @@ $(function() {
 		debugLog(parameters);
 		var num = parseInt(parameters[0])*2 + 1;
 		for (var i = 1; i < num; i += 2) {
-			if(parameters[i] !== username || usersData[paramaters[i]][0] != parameters[i+1]) {
+			if(parameters[i] !== username || usersData[parameters[i]][0] != parameters[i+1]) {
 				// add user to the user list if they don't exist at all,
 				// otherwise just update the user's rank from the server
 				if(users.find(function(u) {
