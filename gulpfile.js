@@ -7,7 +7,7 @@ const gulp = require('gulp'),
 	sourcemaps = require('gulp-sourcemaps')
 	fs = require('fs');
 
-// paths for stuff
+// Paths
 const paths = {
 	html: "src/html/*.html",
 	js: [
@@ -21,8 +21,8 @@ const paths = {
 
 function HtmlTask() {
 	return gulp.src([paths.html])
-		.pipe(inject(gulp.src(['build/all.min.js', 'build/*.css'], {read: false}), { ignorePath: 'build', addPrefix: 'collab-vm' }))
-		.pipe(inject(gulp.src('src/templates/*.html').pipe(rename(function(path) {
+		.pipe(inject(gulp.src(['build/all.min.js', 'build/*.css'], { read: false }), { ignorePath: 'build', addRootSlash: false }))
+		.pipe(inject(gulp.src('src/templates/*.html').pipe(rename((path) => {
 			// This is a trick to use gulp-inject as a simple html template engine
 			// It switches the filename and extension so multiple templates can be used
 			path.extname = '.' + path.basename;
@@ -33,7 +33,7 @@ function HtmlTask() {
 			}
 		}))
 		.pipe(htmlmin(JSON.parse(fs.readFileSync('html-minifier.conf', 'utf8'))))
-		.pipe(gulp.dest('build'));
+		.pipe(gulp.dest('build', { overwrite: true }));
 }
 
 function JsTask() {
@@ -63,7 +63,6 @@ function GuacTask() {
 
 
 // Task export definitions
-
 exports.guacamole = GuacTask;
 
 // default task

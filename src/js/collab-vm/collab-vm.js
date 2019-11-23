@@ -100,13 +100,7 @@ var vmName;
  * @type {boolean}
  */
  var connected = false;
-/**
- * Whether the urlChange function has been called since
- * the page has been loaded.
- * @type {boolean}
- */
-var urlChangeCalled;
- 
+
  /** @const
   * The root directory of the collab-vm project with a
   * forward slash appended to it.
@@ -440,7 +434,9 @@ function updateVMList(list) {
 				// Check that the link was clicked with the left mouse button
 				if (e.which === 1) {
 					e.preventDefault();
-					History.pushState(null, null, this.getAttribute("href"));
+					var name =  this.getAttribute("href").substr(this.getAttribute("href").lastIndexOf('/')+1);
+					debugLog("connect " + name);
+					tunnel.sendMessage("connect", name);
 				}
 			});
 			// If there is an image and the NSFW warning is visible, it should be censored
@@ -561,32 +557,10 @@ function displayUploadWaitTime(waitTime) {
 	}
 }
 
-function urlChange() {
-	var r = History.getState().url.match("(?:(?://)[^/]*)*" + rootDir + "(.*)");
-	if (r) {
-		if (!r[1] || r[1] === viewDir + "/") {
-			vmName = null;
-			getVMList();
-			urlChangeCalled = true;
-			return;
-		} else if (r[1].match("^" + viewDir + "/.+")) {
-			displayLoading();
-			vmName = r[1].substring((viewDir + "/").length);
-			// If we are connected to the server, try to view the VM,
-			// otherwise wait for a connection to be made
-			if (tunnel && tunnel.state === Guacamole.Tunnel.State.OPEN)
-				tunnel.sendMessage("connect", vmName);
-			urlChangeCalled = true;
-			return;
-		}
-	}
-	// Unknown URL so redirect to it
-	window.location.href = History.getState().url;
-}
+
 
 $(window).on("statechange", function() {
 	debugLog("statechange callled");
-	urlChange();
 });
 	
 $(function() {
@@ -598,8 +572,7 @@ $(function() {
 		rootDir = rootDir.substring(0, rootDir.length - ("/" + viewDir + "/").length + 1);
 	}*/
 	//if (window.location.pathname.)
-	if (!DEBUG)
-		urlChange();
+
 	// Try to set the text shadow property for the NSFW warning so it can
 	// be seen on dark backgrounds
 	var warnText = $("#warn-text");
