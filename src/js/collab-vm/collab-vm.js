@@ -1,30 +1,3 @@
-/**
- * Set to true when testing locally.
- * @define {boolean}
- */
-var DEBUG = false;
-/**
- * Prevent the Guacamole client from timing-out while debugging.
- * @define {boolean}
- */
-var DEBUG_NO_TIMEOUT = false;
-/**
- * Disable the NSFW warning.
- * @define {boolean}
- */
-var DEBUG_NO_NSFW = false;
-/**
- * Disable connecting to the WebSocket server.
- * @define {boolean}
- */
-var DEBUG_NO_CONNECT = false;
-/** @define {boolean} */
-var DEBUG_LOADING = false;
-/** @define {boolean} */
-var DEBUG_VM_LIST = false;
-/** @define {boolean} */
-var DEBUG_VM_VIEW = false;
-
 /** @const
  * Max number of characters in a chat message.
  */
@@ -99,23 +72,12 @@ var vmName;
  * Whether the client is connecting to a VM and viewing it.
  * @type {boolean}
  */
- var connected = false;
+var connected = false;
 
- /** @const
-  * The root directory of the collab-vm project with a
-  * forward slash appended to it.
-  * This is determined at runtime to allow the project to be
-  * relocated without needing to recompile the javascript.
-  * @type {string}
-  */
-var rootDir = "/collab-vm/";
-/** @const {string} */
-var viewDir = "view";
-
-/** @const
- * The name of the chat sound.
+/**
+ * List of the nodes this instance of the webapp knows about.
  */
-var chatSound =  rootDir + "notify";
+var nodeList = [];
 
 /**
  * File upload operation.
@@ -141,17 +103,7 @@ var fileResponse = {
 	FAILED: 5,
 	UPLOAD_IN_PROGRESS: 6,
 	TIMED_OUT: 7
-}
-
-/**
- * Whether the page is a view page for viewing a VM.
- * @type {boolean}
- */
-var viewPage;
-
-function isViewPage() {
-	return viewPage = !!window.location.pathname.match("^" + rootDir + viewDir + "/");
-}
+};
 
 /**
  * Gets the CSS class associated with a user rank.
@@ -444,8 +396,12 @@ function updateVMList(list) {
 				e.children().first().children().first().addClass(blurSupported ? "censor" : "censor-fallback");
 			vmList.append(e);
 		}
-	} else {
-		vmList.html("No VMs online");
+	}
+	else {
+		// Prevent the bogus display of "No VMs online" if there are list entries
+		if(![...document.getElementById("vm-list").children].length || !nodeList.length)
+			vmList.html("No VMs online");
+	
 	}
 }
 
@@ -557,252 +513,13 @@ function displayUploadWaitTime(waitTime) {
 	}
 }
 
-
-
-$(window).on("statechange", function() {
-	debugLog("statechange callled");
-});
-	
-$(function() {
-	// Determine the root path of collab-vm
-	//rootDir = window.location.pathname.match("(/(?:[^/]*/)*)")[1];
-	// Check if the path ends with the view directory
-	// and remove it if it does
-	/*if (rootDir.match("/" + viewDir + "/$")) {
-		rootDir = rootDir.substring(0, rootDir.length - ("/" + viewDir + "/").length + 1);
-	}*/
-	//if (window.location.pathname.)
-
-	// Try to set the text shadow property for the NSFW warning so it can
-	// be seen on dark backgrounds
-	var warnText = $("#warn-text");
-	if (!warnText.css("text-shadow", "2px 2px #fff").css("text-shadow")) {
-		// If the property is not supported, set the background color to white
-		warnText.css("background-color", "white");
-	}
-	
-	$("#nsfw-cont-btn").click(function() {
-		displayNsfwWarn(false);
-		if ($("#no-warn-chkbox").prop("checked")) {
-			setCookie("no-nsfw-warn", "1", 365);
-		}
-	});
-	
-	osk = new Guacamole.OnScreenKeyboard(en_us_qwerty_keyboard);
-	activateOSK(false);
-	$("#kbd-keys").append(osk.getElement());
-	
-	osk.onkeydown = function(keysym) {
-		if (hasTurn)
-			guac.sendKeyEvent(1, keysym);
-	};
-	
-	osk.onkeyup = function(keysym) {
-		if (hasTurn)
-			guac.sendKeyEvent(0, keysym);
-	};
-	
-	$("#osk-btn").click(function() {
-		var kbd = $("#kbd-outer");
-		if (kbd.is(":visible"))
-			kbd.hide("fast");
-		else
-			kbd.show("fast");
-	});
-	
-	$(window).resize(function() {
-		if (osk)
-			osk.resize($("#kbd-container").width());
-	});
-	
-	$("#vote-btn").click(function() {
-		hasVoted = true;
-		tunnel.sendMessage("vote", "1");
-	});
-	
-	$("#vote-yes").click(function() {
-		if (!hasVoted) {
-			hasVoted = true;
-			tunnel.sendMessage("vote", "1");
-			$("#vote-alert").hide();
-		}
-	});
-	
-	$("#vote-no").click(function() {
-		if (!hasVoted) {
-			hasVoted = true;
-			tunnel.sendMessage("vote", "0");
-			$("#vote-alert").hide();
-		}
-	});
-	
-	$("#vote-dismiss").click(function() {
-		$("#vote-alert").hide();
-	});
-	
-	$('#username-modal').on('show.bs.modal', function (event) {
-		$("#username-box").val(username);
-	});
-
-	$("#username-ok-btn").click(function() {
-		var newUsername = $("#username-box").val().trim();
-		if (newUsername) {
-			$('#username-modal').modal("hide");
-			debugLog("New Username: " + newUsername);
-			// TODO: close modal when WebSocket disconnects
-			if (tunnel.state == Guacamole.Tunnel.State.OPEN) {
-				tunnel.sendMessage("rename", newUsername);
-			}
-		}
-	});
-	
-	$("#username-box").keydown(function(e) {
-		if (e.which === 13) {
-			// Enter key
-			e.preventDefault();
-			$("#username-ok-btn").trigger("click");
-		}
-	});
-	
-	// TODO: Add drag and drop support for file uploads
-	/*$("#display").on("dragenter", function(e) {
-		$(this).addClass("drag");
-		e.stopPropagation();
-		e.preventDefault();
-	});
-	
-	$("#display").on("dragover", function(e) {
-		e.stopPropagation();
-		e.preventDefault();
-	});
-	
-	$("#display").on("dragleave", function(e) {
-		$(this).removeClass("drag");
-		e.stopPropagation();
-		e.preventDefault();
-	});*/
-	
-	fileApisSupported = !!(window.File && window.FileReader && window.FileList && window.Blob && window.ArrayBuffer && window.Uint8Array);
-	
-	$("#upload-options-btn").click(fileApisSupported ? function() {
-		var fileUpload = $("#file-upload");
-		if (fileUpload.is(":visible"))
-			fileUpload.hide("fast");
-		else
-			fileUpload.show("fast");
-	} : function() { alert("File uploads are not fully supported by your browser."); });
-	
-	if (fileApisSupported) {
-		$("#upload-input").change(function(e) {
-			var files = e.target.files;
-			if (files.length === 1) {
-				var file = files[0];
-				if (file) {
-					if (file.size > maxUploadSize) {
-						alert("File is too big. Max file size is " + maxUploadSize + " bytes.");
-					} else if (file.name.length > maxUploadNameLen) {
-						alert("Filename is too long. Max filename is " + maxUploadNameLen + ".");
-					} else if (/[^\x20-\x7E]|[<>:"/\\\|\?\*]/.test(file.name)) {
-						alert("Filename contains characters that are not allowed.");
-					} else {
-						//$("#filename-box").val(file.name);
-						if (uploadInterval === null) {
-							$("#upload-btn").prop("disabled", false);
-						}
-						return;
-					}
-				}
-			}
-			this.value = null;
-			$("#upload-btn").prop("disabled", true);
-		});
-		
-		$("#upload-btn").click(function() {
-			var files = $("#upload-input")[0].files;
-			if (files.length !== 1)
-				return;
-			var file = files[0];
-			tunnel.sendMessage("file", fileOp.BEGIN, file.name, file.size, $("#upload-run-chkbox").prop("checked") ? 1 : 0);
-			$(this).prop("disabled", true);
-			$("#upload-input").prop("disabled", true);
-			$("#upload-wait-time").html("Uploading...");
-		});
-	}
-	
-	$("#home-btn").attr("href", rootDir).click(function(e) {
-		// Check that the link was clicked with the left mouse button
-		if (e.which === 1) {
-			e.preventDefault();
-			if ($("#vm-list").is(":visible")) {
-				getVMList();
-			} else {
-				History.pushState(null, null, this.getAttribute("href"));
-			}
-		}
-	});
-	
-	$("#chat-input").keypress(function(e) {
-		if (e.which === 13) {
-			// Enter key sends chat message
-			e.preventDefault();
-			$("#chat-send-btn").trigger("click");
-		} else if (this.value.length >= maxChatMsgLen) {
-			e.preventDefault();
-		}
-	}).on("input", function() {
-		// Truncate chat messages that are too long
-		if (this.value.length > maxChatMsgLen)
-			this.value = this.value.substr(0, maxChatMsgLen);
-	});
-	
-	$("#chat-send-btn").click(function() {
-		var chat = $("#chat-input");
-		var msg = chat.val().trim();
-		if (guac.currentState === Guacamole.Client.CONNECTED && msg) {
-			tunnel.sendMessage("chat", msg);
-			chat.val("");
-		}
-	});
-	
-	$("#chat-sound-btn").click(function() {
-		setChatSoundOn(!chatSoundOn);
-		setCookie("chat-sound", chatSoundOn ? "1" : "0", 365);
-	});
-	
-	initSound();
-	
-	setChatSoundOn(getCookie("chat-sound") != "0");
-
-	displayNsfwWarn(!DEBUG_NO_NSFW && getCookie("no-nsfw-warn") != "1");
-	
-	if (DEBUG_VM_LIST) {
-		displayVMList();
-		updateVMList(["win-xp", "Windows XP SP3", ""/*, "win-vista", "Windows Vista", "", "win-7", "Windows 7 Professional", ""*/]);
-		$("#vm-list > div > a").prepend($("<img>", {"data-src": "holder.js/300x200"}));
-		Holder.run();
-		return;
-	} else if (DEBUG_VM_VIEW) {
-		displayVMView();
-		return;
-	}
-	
-	if (DEBUG_LOADING) {
-		displayLoading();
-		return;
-	}
-	
-	if (DEBUG_NO_CONNECT)
-		return;
+// long live DartzCodingTM
+function InitalizeGuacamoleClient() {
+	debugLog("InitalizeGuacamoleClient called");
 	
 	// Get display div from document
 	display = document.getElementById("display");
-
-	// Instantiate client, using a websocket tunnel for communications.
-	tunnel = new Guacamole.WebSocketTunnel("ws://" + serverAddress + "/");
-	// Disable receive timeouts for debugging
-	if (DEBUG_NO_TIMEOUT)
-		tunnel.receiveTimeout = 0;
-
+	
 	guac = new Guacamole.Client(tunnel);
 	
 	guac.getDisplay().getElement().addEventListener("click", function() {
@@ -1140,10 +857,351 @@ $(function() {
 		if (hasTurn)
 			guac.sendMouseState(mouseState);
 	};
+	
 	// Keyboard
 	keyboard = new Guacamole.Keyboard(document);
-	// Connect to the server
+}
+
+function multicollab(ip) {
+	var connTunnel = new Guacamole.WebSocketTunnel('ws://' + ip + '/');
+	
+	connTunnel.onstatechange = function(code) {
+		if (code == 2) {
+			setTimeout(function() {
+				listGuac.connect()
+			}, 1000)
+		} else if (code == 1) {
+			connTunnel.sendMessage('connect')
+			connTunnel.sendMessage('list')
+		}
+	}
+	
+	var listGuac = new Guacamole.Client(connTunnel);
+	
+	listGuac.onlist = function(e) {
+		connTunnel.onstatechange = null
+		listGuac.disconnect()
+		for (var i = 0; i < e.length; i += 3) {
+				nodeList.push({
+					ip: ip,
+					url: e[i],
+					name: e[i + 1],
+					image: e[i + 2]
+				});
+		}
+		
+		nodeList.sort(function(a, b) {
+			return a.url > b.url ? 1 : -1;
+		});
+			
+		var vmlist = document.getElementById('vm-list')
+		vmlist.innerHTML = "";
+		
+		for(var i in nodeList) {
+			var thisnode = nodeList[i];
+			
+			var div = document.createElement('div');
+			div.className = 'col-sm-5 col-md-3';
+			var link = document.createElement('a');
+			link.className = 'thumbnail';
+			link.href = '#' + thisnode.url;
+			link.innerHTML = (thisnode.image ? '<img src="data:image/png;base64,' + thisnode.image + '"/>' : '') + '<div class="caption"><h4>' + thisnode.name + '</h4></div>';
+			
+			link.onclick = function(event) {
+					event.preventDefault();
+					tunnel.onstatechange = null;
+					guac.disconnect(); // kill existing connection
+
+					// can't use thisnode because that's incredibly broken
+					// so we have to do this cursed being to get the node information
+					
+					var elem = event.srcElement;
+					while(elem.hash == undefined)
+						elem = elem.parentElement;
+					
+					var hash = elem.hash;
+					
+					
+					var node = nodeList.find(node => node.url == hash.substring(1));
+					if(node == undefined) {
+						debugLog("Node not found?");
+						return;
+					}
+					
+					var display = document.getElementById('display');
+					if(display.firstChild)
+							display.removeChild(display.firstChild);
+						
+					// set up the tunnel for InitalizeGuacamoleClient
+					window.tunnel = new Guacamole.WebSocketTunnel('ws://' + node.ip + '/');
+					window.vmName = node.url;
+					window.serverAddress = node.ip;
+					
+					// connect to server
+					debugLog("Connect to multicollab VM " + node.ip);
+					InitalizeGuacamoleClient();
+					guac.connect();
+			};
+			div.appendChild(link);
+			vmlist.appendChild(div);
+			
+			// Manually apply the nsfw blur if we have to
+			if(nsfwWarn)
+				$("#vm-list img").addClass("censor")
+		}
+	};
+	
+	listGuac.connect();
+}
+
+$(window).on("statechange", function() {
+	debugLog("statechange callled");
+});
+	
+$(function() {
+	// Try to set the text shadow property for the NSFW warning so it can
+	// be seen on dark backgrounds
+	var warnText = $("#warn-text");
+	if (!warnText.css("text-shadow", "2px 2px #fff").css("text-shadow")) {
+		// If the property is not supported, set the background color to white
+		warnText.css("background-color", "white");
+	}
+	
+	$("#nsfw-cont-btn").click(function() {
+		displayNsfwWarn(false);
+		if ($("#no-warn-chkbox").prop("checked")) {
+			setCookie("no-nsfw-warn", "1", 365);
+		}
+	});
+	
+	osk = new Guacamole.OnScreenKeyboard(en_us_qwerty_keyboard);
+	activateOSK(false);
+	$("#kbd-keys").append(osk.getElement());
+	
+	osk.onkeydown = function(keysym) {
+		if (hasTurn)
+			guac.sendKeyEvent(1, keysym);
+	};
+	
+	osk.onkeyup = function(keysym) {
+		if (hasTurn)
+			guac.sendKeyEvent(0, keysym);
+	};
+	
+	$("#osk-btn").click(function() {
+		var kbd = $("#kbd-outer");
+		if (kbd.is(":visible"))
+			kbd.hide("fast");
+		else
+			kbd.show("fast");
+	});
+	
+	$("#turn-btn").click(function() {
+		if(tunnel.state == Guacamole.Tunnel.State.OPEN)
+			tunnel.sendMessage("turn");
+	});
+	
+	$(window).resize(function() {
+		if (osk)
+			osk.resize($("#kbd-container").width());
+	});
+	
+	$("#vote-btn").click(function() {
+		hasVoted = true;
+		tunnel.sendMessage("vote", "1");
+	});
+	
+	$("#vote-yes").click(function() {
+		if (!hasVoted) {
+			hasVoted = true;
+			tunnel.sendMessage("vote", "1");
+			$("#vote-alert").hide();
+		}
+	});
+	
+	$("#vote-no").click(function() {
+		if (!hasVoted) {
+			hasVoted = true;
+			tunnel.sendMessage("vote", "0");
+			$("#vote-alert").hide();
+		}
+	});
+	
+	$("#vote-dismiss").click(function() {
+		$("#vote-alert").hide();
+	});
+	
+	$('#username-modal').on('show.bs.modal', function (event) {
+		$("#username-box").val(username);
+	});
+
+	$("#username-ok-btn").click(function() {
+		var newUsername = $("#username-box").val().trim();
+		if (newUsername) {
+			$('#username-modal').modal("hide");
+			debugLog("New Username: " + newUsername);
+			// TODO: close modal when WebSocket disconnects
+			if (tunnel.state == Guacamole.Tunnel.State.OPEN) {
+				tunnel.sendMessage("rename", newUsername);
+			}
+		}
+	});
+	
+	$("#username-box").keydown(function(e) {
+		if (e.which === 13) {
+			// Enter key
+			e.preventDefault();
+			$("#username-ok-btn").trigger("click");
+		}
+	});
+	
+	// TODO: Add drag and drop support for file uploads
+	/*$("#display").on("dragenter", function(e) {
+		$(this).addClass("drag");
+		e.stopPropagation();
+		e.preventDefault();
+	});
+	
+	$("#display").on("dragover", function(e) {
+		e.stopPropagation();
+		e.preventDefault();
+	});
+	
+	$("#display").on("dragleave", function(e) {
+		$(this).removeClass("drag");
+		e.stopPropagation();
+		e.preventDefault();
+	});*/
+	
+	fileApisSupported = !!(window.File && window.FileReader && window.FileList && window.Blob && window.ArrayBuffer && window.Uint8Array);
+	
+	$("#upload-options-btn").click(fileApisSupported ? function() {
+		var fileUpload = $("#file-upload");
+		if (fileUpload.is(":visible"))
+			fileUpload.hide("fast");
+		else
+			fileUpload.show("fast");
+	} : function() { alert("File uploads are not fully supported by your browser."); });
+	
+	if (fileApisSupported) {
+		$("#upload-input").change(function(e) {
+			var files = e.target.files;
+			if (files.length === 1) {
+				var file = files[0];
+				if (file) {
+					if (file.size > maxUploadSize) {
+						alert("File is too big. Max file size is " + maxUploadSize + " bytes.");
+					} else if (file.name.length > maxUploadNameLen) {
+						alert("Filename is too long. Max filename is " + maxUploadNameLen + ".");
+					} else if (/[^\x20-\x7E]|[<>:"/\\\|\?\*]/.test(file.name)) {
+						alert("Filename contains characters that are not allowed.");
+					} else {
+						//$("#filename-box").val(file.name);
+						if (uploadInterval === null) {
+							$("#upload-btn").prop("disabled", false);
+						}
+						return;
+					}
+				}
+			}
+			this.value = null;
+			$("#upload-btn").prop("disabled", true);
+		});
+		
+		$("#upload-btn").click(function() {
+			var files = $("#upload-input")[0].files;
+			if (files.length !== 1)
+				return;
+			var file = files[0];
+			tunnel.sendMessage("file", fileOp.BEGIN, file.name, file.size, $("#upload-run-chkbox").prop("checked") ? 1 : 0);
+			$(this).prop("disabled", true);
+			$("#upload-input").prop("disabled", true);
+			$("#upload-wait-time").html("Uploading...");
+		});
+	}
+	
+	$("#home-btn").attr("href", rootDir).click(function(e) {
+		// Check that the link was clicked with the left mouse button
+		if (e.which === 1) {
+			e.preventDefault();
+			if ($("#vm-list").is(":visible")) {
+				getVMList();
+			} else {
+				History.pushState(null, null, this.getAttribute("href"));
+			}
+		}
+	});
+	
+	$("#chat-input").keypress(function(e) {
+		if (e.which === 13) {
+			// Enter key sends chat message
+			e.preventDefault();
+			$("#chat-send-btn").trigger("click");
+		} else if (this.value.length >= maxChatMsgLen) {
+			e.preventDefault();
+		}
+	}).on("input", function() {
+		// Truncate chat messages that are too long
+		if (this.value.length > maxChatMsgLen)
+			this.value = this.value.substr(0, maxChatMsgLen);
+	});
+	
+	$("#chat-send-btn").click(function() {
+		var chat = $("#chat-input");
+		var msg = chat.val().trim();
+		if (guac.currentState === Guacamole.Client.CONNECTED && msg) {
+			tunnel.sendMessage("chat", msg);
+			chat.val("");
+		}
+	});
+	
+	$("#chat-sound-btn").click(function() {
+		setChatSoundOn(!chatSoundOn);
+		setCookie("chat-sound", chatSoundOn ? "1" : "0", 365);
+	});
+	
+	initSound();
+	
+	setChatSoundOn(getCookie("chat-sound") != "0");
+
+	displayNsfwWarn(!DEBUG_NO_NSFW && getCookie("no-nsfw-warn") != "1");
+	
+	if (DEBUG_VM_LIST) {
+		displayVMList();
+		updateVMList(["win-xp", "Windows XP SP3", ""/*, "win-vista", "Windows Vista", "", "win-7", "Windows 7 Professional", ""*/]);
+		$("#vm-list > div > a").prepend($("<img>", {"data-src": "holder.js/300x200"}));
+		Holder.run();
+		return;
+	} else if (DEBUG_VM_VIEW) {
+		displayVMView();
+		return;
+	}
+	
+	if (DEBUG_LOADING) {
+		displayLoading();
+		return;
+	}
+	
+	if (DEBUG_NO_CONNECT)
+		return;
+	
+	// Instantiate client, using a websocket tunnel for communications.
+	tunnel = new Guacamole.WebSocketTunnel("ws://" + serverAddress + "/");
+	
+	// Disable receive timeouts for debugging
+	if (DEBUG_NO_TIMEOUT)
+		tunnel.receiveTimeout = 0;
+	
+	debugLog("Initalize guacamole client");
+	
+	InitalizeGuacamoleClient();
 	guac.connect();
+	
+	// Add the nodes in the configuration
+	additionalNodes.forEach((node) => {
+		debugLog("Add additional node " + node);
+		multicollab(node);
+	});
 });
 
 // Disconnect on close
