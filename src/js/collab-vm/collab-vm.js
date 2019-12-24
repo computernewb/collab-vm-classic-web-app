@@ -879,8 +879,9 @@ function multicollab(ip) {
 	var listGuac = new Guacamole.Client(connTunnel);
 	
 	listGuac.onlist = function(e) {
-		connTunnel.onstatechange = null
-		listGuac.disconnect()
+		connTunnel.onstatechange = null;
+		listGuac.disconnect();
+		
 		for (var i = 0; i < e.length; i += 3) {
 				nodeList.push({
 					ip: ip,
