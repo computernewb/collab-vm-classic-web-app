@@ -12,7 +12,7 @@ const paths = {
 	html: "src/html/*.html",
 	js: [
 		'src/js/collab-vm/jquery.history.js', 
-		'src/js/guacamole/**/*.js', 
+		'src/js/guacamole/*.js', 
 		'src/js/collab-vm/common.js', 
 		'src/js/collab-vm/en-us-qwerty.js', 
 		'src/js/collab-vm/collab-vm.js'
@@ -47,7 +47,7 @@ function JsTask() {
 }
 
 function ResTask() {
-	return gulp.src('src/res/**/*',  { dot: true /* Include .htaccess files */ })
+	return gulp.src('src/res/**/*')
 		.pipe(gulp.dest('build'));
 }
 
