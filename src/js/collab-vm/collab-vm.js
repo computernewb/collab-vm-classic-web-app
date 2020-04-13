@@ -1216,7 +1216,7 @@ $(function() {
 		});
 		// This is required to prevent the canvas from going invisible.
 		darkModeStyleElement = document.createElement("style")
-		darkModeStyleElement.textContent = "canvas{z-index:9999!important}"
+		darkModeStyleElement.textContent = "canvas{z-index:0!important}"
 		document.body.appendChild(darkModeStyleElement);
 	}
 });
