@@ -170,24 +170,6 @@ Guacamole.HTTPTunnel = function(tunnelURL) {
     var receive_timeout = null;
 
     /**
-     * Initiates a timeout which, if data is not received, causes the tunnel
-     * to close with an error.
-     * 
-     * @private
-     */
-    function reset_timeout() {
-
-        // Get rid of old timeout (if any)
-        window.clearTimeout(receive_timeout);
-
-        // Set new timeout
-        receive_timeout = window.setTimeout(function () {
-            close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
-        }, tunnel.receiveTimeout);
-
-    }
-
-    /**
      * Closes this tunnel, signaling the given status and corresponding
      * message, which will be sent to the onerror handler if the status is
      * an error status.
@@ -360,8 +342,6 @@ Guacamole.HTTPTunnel = function(tunnelURL) {
             if (xmlhttprequest.readyState === 3 ||
                 xmlhttprequest.readyState === 4) {
 
-                reset_timeout();
-
                 // Also poll every 30ms (some browsers don't repeatedly call onreadystatechange for new data)
                 if (pollingMode === POLLING_ENABLED) {
                     if (xmlhttprequest.readyState === 3 && !interval)
@@ -517,9 +497,6 @@ Guacamole.HTTPTunnel = function(tunnelURL) {
 
     this.connect = function(data) {
 
-        // Start waiting for connect
-        reset_timeout();
-
         // Start tunnel and connect
         var connect_xmlhttprequest = new XMLHttpRequest();
         connect_xmlhttprequest.onreadystatechange = function() {
@@ -532,8 +509,6 @@ Guacamole.HTTPTunnel = function(tunnelURL) {
                 handleHTTPTunnelError(connect_xmlhttprequest);
                 return;
             }
-
-            reset_timeout();
 
             // Get UUID from response
             tunnel_uuid = connect_xmlhttprequest.responseText;
@@ -632,27 +607,6 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     }
 
     /**
-     * Initiates a timeout which, if data is not received, causes the tunnel
-     * to close with an error.
-     * 
-     * @private
-     */
-    function reset_timeout() {
-		
-		if (!tunnel.receiveTimeout)
-			return;
-		
-        // Get rid of old timeout (if any)
-        window.clearTimeout(receive_timeout);
-
-        // Set new timeout
-        receive_timeout = window.setTimeout(function () {
-            close_tunnel(new Guacamole.Status(Guacamole.Status.Code.UPSTREAM_TIMEOUT, "Server timeout."));
-        }, tunnel.receiveTimeout);
-
-    }
-
-    /**
      * Closes this tunnel, signaling the given status and corresponding
      * message, which will be sent to the onerror handler if the status is
      * an error status.
@@ -723,14 +677,10 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
 
     this.connect = function(data) {
 
-        reset_timeout();
-
         // Connect socket
         socket = new WebSocket(data ? tunnelURL + "?" + data : tunnelURL, "guacamole");
 
         socket.onopen = function(event) {
-
-            reset_timeout();
 
             tunnel.state = Guacamole.Tunnel.State.OPEN;
             if (tunnel.onstatechange)
@@ -747,8 +697,6 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         };
 
         socket.onmessage = function(event) {
-
-            reset_timeout();
 
             var message = event.data;
             var startIndex = 0;
