@@ -141,6 +141,7 @@
 					</div>
 					<div style="display:none;" id="vote-stats">
 						<h3><small>Votes for VM Reset (<span id="vote-time"></span>)</small></h3>
+						<button style="display:none;" type="button" class="btn btn-warning" id="vote-cancel">Cancel Vote</button>
 						<h4><span class="label label-success">Yes: <span id="vote-label-yes"></span></span> <span class="label label-danger">No: <span id="vote-label-no"></span></span></h4>
 					</div>
 					<!--<div class="progress">
@@ -153,10 +154,16 @@
 					</div>-->
 					<div>
 						<button class="btn btn-default" type="button" id="turn-btn">Take Turn</button>
+						<button style="display:none;" class="btn btn-default" type="button" id="end-turn-btn">End Turn</button>
 						<button class="btn btn-default" type="button" id="osk-btn">Keyboard</button>
-						<button class="btn btn-default" type="button"  data-toggle="modal" data-target="#username-modal" id="username-btn" disabled>Change Username</button>
+						<button class="btn btn-default" type="button" data-toggle="modal" data-target="#username-modal" id="username-btn" disabled>Change Username</button>
 						<button style="display: none;" class="btn btn-default" type="button" id="vote-btn">Vote for Reset</button>
 						<button class="btn btn-default" type="button" id="upload-options-btn">Upload File</button>
+						<div id="admin-btns" style="display:none;"><br>
+							<button style="display:none;" class="btn btn-default" type="button" id="restore-btn">Restore VM</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="reboot-btn">Reboot VM</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="clear-turnqueue-btn">Clear Turn Queue</button>
+						</div>
 						<div id="file-upload" class="form-inline" style="display: none;">
 							<input class="form" id="upload-input" type="file">
 							<!--<label for="filename-box">Filename</label><input type="text" class="form-control" id="filename-box" placeholder="filename">-->

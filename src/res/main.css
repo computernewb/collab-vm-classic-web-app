@@ -64,6 +64,10 @@ table {
     font-weight: bold;
     color: red;
 }
+.moderator.list-group-item {
+    font-weight: bold;
+    color: green;
+}
 .dev.list-group-item {
     font-weight: bold;
     color: blue;

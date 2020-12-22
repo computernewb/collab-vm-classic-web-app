@@ -539,6 +539,10 @@ Guacamole.Client = function(tunnel) {
 			if (guac_client.onchat)
                 guac_client.onchat(parameters);
 		},
+		"admin": function(parameters) {
+			if (guac_client.onadmin)
+                guac_client.onadmin(parameters);
+		},
 		"adduser": function(parameters) {
 			if (guac_client.onadduser)
                 guac_client.onadduser(parameters);

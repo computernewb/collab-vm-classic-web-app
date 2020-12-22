@@ -51,7 +51,7 @@ var chatSound = rootDir + "notify";
  * The main node this webapp is configured to connect to.
  * @const 
  */
-var serverAddress = "localhost:8081";
+var serverAddress = window.location.host;
 
 /** 
  * Additional nodes to connect to.

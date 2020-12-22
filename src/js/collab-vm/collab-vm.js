@@ -13,6 +13,7 @@ var maxChatMsgHistory = 100;
  * @type {boolean}
  */
 var hasTurn = false;
+var modPerms = 0;
 var turnInterval = null;
 var voteInterval = null;
 var uploadInterval = null;
@@ -119,13 +120,38 @@ function getRankClass(rank) {
 			return "user";
 		case 2: // Admin
 			return "admin";
+		case 3: // Moderator
+			return "moderator";
 	}
 }
 
 function addTableRow(table, user, userData) {
 	var data = document.createElement("LI");
 	data.className = "list-group-item";
-	data.innerHTML = user;
+	
+	var userHTML;
+	if ((usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 20)) && user !== username) {
+		userHTML = "<div class='dropdown-toggle' data-toggle='dropdown' role='button' aria-haspopup='true' aria-expanded='false'>" + user + "<span class='caret'></span></div><ul class='dropdown-menu'>";
+		if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 64)) {
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",16,\"" + user + "\",2);return false;'>End Turn</a></li>";
+		}
+		if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 4)) {
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",12,\"" + user + "\");return false;'>Ban</a></li>";
+		}
+		if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 32)) {
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",15,\"" + user + "\",2);return false;'>Kick</a></li>";
+		}
+		if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 16)) {
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",14,\"" + user + "\",0);return false;'>Temporary Mute</a></li>";
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",14,\"" + user + "\",1);return false;'>Indefinite Mute</a></li>";
+			userHTML += "<li><a href='#' onclick='tunnel.sendMessage(\"admin\",14,\"" + user + "\",2);return false;'>Unmute</a></li>";
+		}
+		userHTML += "</ul>";
+	} else {
+		userHTML = user;
+	}
+	data.innerHTML = userHTML;
+	
 	var rank = getRankClass(userData[0]);
 	if (rank)
 		data.className += " " + rank;
@@ -388,7 +414,8 @@ function updateVMList(list) {
 					e.preventDefault();
 					var name =  this.getAttribute("href").substr(this.getAttribute("href").lastIndexOf('/')+1);
 					debugLog("connect " + name);
-					tunnel.sendMessage("connect", name);
+					vmName = name;
+					tunnel.sendMessage("connect", vmName);
 				}
 			});
 			// If there is an image and the NSFW warning is visible, it should be censored
@@ -442,6 +469,13 @@ function setVoteStats(parameters) {
 
 	if (!hasVoted) {
 		$("#vote-alert").show();
+	}
+
+	if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 8))
+	{
+		$("#vote-cancel").show();
+	} else {
+		$("#vote-cancel").hide();
 	}
 }
 
@@ -552,6 +586,10 @@ function InitalizeGuacamoleClient() {
 			username = null;
 			setFocus(false);
 			hasTurn = false;
+			$("#turn-btn").show();
+			$("#end-turn-btn").hide();
+			$("#vote-cancel").hide();
+			$("#admin-btns").hide();
 			if (turnInterval !== null) {
 				clearInterval(turnInterval);
 				turnInterval = null;
@@ -617,6 +655,9 @@ function InitalizeGuacamoleClient() {
 		if (num > 2 && parameters[2] == username) {
 			// The user has control
 			hasTurn = true;
+			$("#turn-btn").hide();
+			$("#end-turn-btn").show();
+			
 			display.className = "focused";
 			if (turnInterval !== null)
 				clearInterval(turnInterval);
@@ -632,6 +673,8 @@ function InitalizeGuacamoleClient() {
 		} else if (parameters.length > num) {
 			// The user is waiting for control
 			hasTurn = false;
+			$("#turn-btn").hide();
+			$("#end-turn-btn").show();
 			display.className = "waiting";
 			if (turnInterval !== null)
 				clearInterval(turnInterval);
@@ -644,14 +687,16 @@ function InitalizeGuacamoleClient() {
 					}
 				}, Math.round(parseInt(parameters[parameters.length-1])/1000)*1000);
 		} else {
-			if (hasTurn) {
+			if (turnInterval !== null || hasTurn) {
 				hasTurn = false;
-				display.className = "";
-			}
-			if (turnInterval !== null) {
-				clearInterval(turnInterval);
-				turnInterval = null;
 				$("#status").html("");
+				$("#turn-btn").show();
+				$("#end-turn-btn").hide();
+				display.className = "";
+				if (turnInterval !== null) {
+					clearInterval(turnInterval);
+					turnInterval = null;
+				}
 			}
 		}
 		activateOSK(hasTurn);
@@ -729,6 +774,8 @@ function InitalizeGuacamoleClient() {
 				connected = false;
 				//cancelUpload = true;
 				hasTurn = false;
+				$("#turn-btn").show();
+				$("#end-turn-btn").hide();
 				if (turnInterval !== null)
 					clearInterval(turnInterval);
 				if (voteInterval !== null)
@@ -739,6 +786,39 @@ function InitalizeGuacamoleClient() {
 				// Redirect to VM list
 				History.pushState(null, null, rootDir);
 				break;
+		}
+	};
+	
+	guac.onadmin = function(parameters) {
+		if (parameters[0] === "0") {
+			var rank = 0;
+			if (parameters[1] === "1")
+				rank = 2;
+			else if (parameters[1] === "3")
+			{
+				rank = 3;
+				modPerms = parseInt(parameters[2]);
+			}
+			if (rank == 2 || (rank == 3 && modPerms & 3))
+				$("#admin-btns").show();
+			else
+				$("#admin-btns").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 1))
+				$("#restore-btn").show();
+			else
+				$("#restore-btn").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 2))
+				$("#reboot-btn").show();
+			else
+				$("#reboot-btn").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 8))
+				$("#vote-cancel").show();
+			else
+				$("#vote-cancel").hide();			
+			if (rank == 2 || (rank == 3 && modPerms & 64))
+				$("#clear-turnqueue-btn").show();
+			else
+				$("#clear-turnqueue-btn").hide();
 		}
 	};
 	
@@ -906,8 +986,8 @@ function multicollab(ip) {
 			var link = document.createElement('a');
 			link.className = 'thumbnail';
 			link.href = '#' + thisnode.url;
-			link.innerHTML = (thisnode.image ? '<img src="data:image/png;base64,' + thisnode.image + '"/>' : '') + '<div class="caption"><h4>' + thisnode.name + '</h4></div>';
-			
+			if (thisnode.image === "") {checkforcnewbss = '<img src="http://computernewb.com/screenshots/' + thisnode.url + '.jpg"/><div class="caption"><h4>' + thisnode.name + "</h4></div>"}else{checkforcnewbss = (thisnode.image ? '<img src="data:image/png;base64,' + thisnode.image + '"/>' : "") + '<div class="caption"><h4>' + thisnode.name + "</h4></div>"};
+			link.innerHTML=checkforcnewbss;
 			link.onclick = function(event) {
 					event.preventDefault();
 					tunnel.onstatechange = null;
@@ -1001,6 +1081,11 @@ $(function() {
 		if(tunnel.state == Guacamole.Tunnel.State.OPEN)
 			tunnel.sendMessage("turn");
 	});
+
+	$("#end-turn-btn").click(function() {
+		if(tunnel.state == Guacamole.Tunnel.State.OPEN)
+			tunnel.sendMessage("turn","0");
+	});
 	
 	$(window).resize(function() {
 		if (osk)
@@ -1026,6 +1111,10 @@ $(function() {
 			tunnel.sendMessage("vote", "0");
 			$("#vote-alert").hide();
 		}
+	});
+
+	$("#vote-cancel").click(function() {
+		tunnel.sendMessage("admin", "13");
 	});
 	
 	$("#vote-dismiss").click(function() {
@@ -1120,6 +1209,17 @@ $(function() {
 			$("#upload-wait-time").html("Uploading...");
 		});
 	}
+	
+	$("#restore-btn").click(function() {
+		tunnel.sendMessage("admin", "8", vmName);
+	});
+	
+	$("#reboot-btn").click(function() {
+		tunnel.sendMessage("admin", "10", vmName);
+	});	
+	$("#clear-turnqueue-btn").click(function() {
+		tunnel.sendMessage("admin", "17", vmName);
+	});
 	
 	$("#home-btn").attr("href", rootDir).click(function(e) {
 		// Check that the link was clicked with the left mouse button
