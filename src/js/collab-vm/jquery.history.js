@@ -483,21 +483,23 @@ if (typeof JSON !== 'object') {
             throw new SyntaxError('JSON.parse');
         };
     }
-}());/**
+}());
+
+/**
  * History.js jQuery Adapter
  * @author Benjamin Arthur Lupton <contact@balupton.com>
  * @copyright 2010-2011 Benjamin Arthur Lupton <contact@balupton.com>
  * @license New BSD License <http://creativecommons.org/licenses/BSD/>
  */
 
+export var History = {};
+
 // Closure
 (function(window,undefined){
 	"use strict";
 
 	// Localise Globals
-	var
-		History = window.History = window.History||{},
-		jQuery = window.jQuery;
+	var jQuery = window.jQuery;
 
 	// Check Existence
 	if ( typeof History.Adapter !== 'undefined' ) {
@@ -579,8 +581,7 @@ if (typeof JSON !== 'object') {
 		document = window.document, // Make sure we are using the correct document
 		setTimeout = window.setTimeout||setTimeout,
 		clearTimeout = window.clearTimeout||clearTimeout,
-		setInterval = window.setInterval||setInterval,
-		History = window.History = window.History||{}; // Public History Object
+		setInterval = window.setInterval||setInterval
 
 	// Check Existence
 	if ( typeof History.initHtml4 !== 'undefined' ) {
@@ -1270,7 +1271,6 @@ if (typeof JSON !== 'object') {
 		clearInterval = window.clearInterval,
 		JSON = window.JSON,
 		alert = window.alert,
-		History = window.History = window.History||{}, // Public History Object
 		history = window.history; // Old History Object
 
 	try {

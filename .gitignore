@@ -1,2 +1,7 @@
 build/**/*
 node_modules/**/*
+build.*
+
+# HISTORIC old drop that the webapp doesn't use
+src/html/guacamole.min.js
+tmp/

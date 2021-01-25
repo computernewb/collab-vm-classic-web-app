@@ -1,18 +1,29 @@
+import common from "./common";
+import { en_us_qwerty_keyboard } from "./en-us-qwerty";
+
+import { History } from "./jquery.history.js";
+
+// I'm sorry,
+// If you want to bitch at anyone, bitch at Glyptodon
+import { GetGuacamole } from "../../../tmp/guacamole.module.js";
+const Guacamole = GetGuacamole();
+
 /** @const
  * Max number of characters in a chat message.
  */
-var maxChatMsgLen = 100;
+window.maxChatMsgLen = 100;
 
 /** @const
  * Max number of chat messages to store.
  */
-var maxChatMsgHistory = 100;
+window.maxChatMsgHistory = 100;
 
 /**
  * Whether the user has control over the VM or not.
  * @type {boolean}
  */
 var hasTurn = false;
+var modPerms = 0;
 var turnInterval = null;
 var voteInterval = null;
 var uploadInterval = null;
@@ -61,13 +72,15 @@ var usersData = {};
 /** {dict} */
 var usersList = {};
 /** @type {string} */
-var username = null;
+window.username = null;
+
 /**
  * The name of the VM that the user is currently viewing 
  * or trying to view.
  * @type {string}
  */
-var vmName;
+window.vmName = null;
+
 /**
  * Whether the client is connecting to a VM and viewing it.
  * @type {boolean}
@@ -119,13 +132,97 @@ function getRankClass(rank) {
 			return "user";
 		case 2: // Admin
 			return "admin";
+		case 3: // Moderator
+			return "moderator";
 	}
 }
+
+/**
+ * Define a PIP entity incase supported.
+ */
+//var pictureInPictureVideo;
+
+var admin = {
+	loginTimesPressed: 0,
+	
+	// I HATE THIS
+	copyIP: function(name, ip){},
+
+	getIP: function(user) {
+		tunnel.sendMessage("admin", 19, user);
+		// why is this assigned at runtime?
+		this.copyIP = (name, ip) => {
+			if (navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(`${name} - ${ip}`);
+			} else {
+				// If the browser doesn't support writing text to the clipboard, send the IP to chat instead.
+				chatMessage("",`${name} - ${ip}`);
+			}
+		};
+	},
+
+	// I've named this "VM Monitor" instead of "QEMU Monitor" in the case that more hypervisors are supported in the future.
+	vmMonitor: {
+		output: function(output) {
+			var outputBox = $("#vm-monitor-output");
+			outputBox.append(output);
+			outputBox.scrollTop(outputBox[0].scrollHeight);
+		},
+		input: function(input) {
+			if (tunnel.state == Guacamole.Tunnel.State.OPEN && input != "") {
+				tunnel.sendMessage("admin", 5, vmName, input);
+				this.output("> " + input + "\n");
+			};
+		},
+		sendFromDialog: function() {
+			var inputBox = $("#vm-monitor-input");
+			this.input(inputBox.val().trim());
+			inputBox.val("");
+		}
+	},
+	renameUser: function(oldName) {
+		var newName = prompt("Change name from " + oldName + " to? (Leave blank to reset)", oldName);
+		if (newName != null) {
+			if (newName == "") {
+				tunnel.sendMessage("admin", 18, oldName);
+			} else {
+				tunnel.sendMessage("admin", 18, oldName, newName);
+			};
+		};
+	},
+
+	// This is the ONLY exposed way to send a "arbitrary" tunnel instruction
+	adminInstruction: function() {
+		// This only looks ugly because we need to use ES5 syntax
+		var args = Array.prototype.slice.call(arguments, 0); args.unshift("admin");
+		tunnel.sendMessage.apply(null, args); // ("admin", ...)
+	}
+};
 
 function addTableRow(table, user, userData) {
 	var data = document.createElement("LI");
 	data.className = "list-group-item";
-	data.innerHTML = user;
+
+	var userHTML;
+	if ((usersData[username][0] == 2 || usersData[username][0] == 3) && user !== username) {
+		// Maybe eventually I should somehow categorise these, this is getting crowded
+		userHTML = `<div class='dropdown-toggle' data-toggle='dropdown' role='button' aria-haspopup='true' aria-expanded='false'>${user}<span class='caret'></span></div><ul class='dropdown-menu'>`;
+		if (modPerms & 64) userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(16,"${user}");return false;'>End Turn</a></li>`;
+		if (modPerms & 4) userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(12,"${user}");return false;'>Ban</a></li>`;
+		if (modPerms & 32) userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(15,"${user}");return false;'>Kick</a></li>`;
+		if (modPerms & 128) userHTML += `<li><a href='#' onclick='GetAdmin().renameUser("${user}");return false;'>Change Name</a></li>`; // Maybe eventually I should move this to a HTML prompt instead
+		if (modPerms & 16) {
+			userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(14,"${user}",0);return false;'>Temporary Mute</a></li>`;
+			userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(14,"${user}",1);return false;'>Indefinite Mute</a></li>`;
+			userHTML += `<li><a href='#' onclick='GetAdmin().adminInstruction(14,"${user}",2);return false;'>Unmute</a></li>`;
+		};
+		if (modPerms & 256) userHTML += `<li><a href='#' onclick='GetAdmin().getIP("${user}");return false;'>Copy IP</a></li>`;
+		userHTML += "</ul>";
+	} else {
+		userHTML = user;
+	}
+	data.innerHTML = userHTML;
+	
 	var rank = getRankClass(userData[0]);
 	if (rank)
 		data.className += " " + rank;
@@ -172,7 +269,7 @@ function chatMessage(username, message) {
 	var atBottom = chatPanel.offsetHeight + chatPanel.scrollTop >= chatPanel.scrollHeight;
 	var chatElement = $('<li><div></div></li>');
 	if (username)
-		chatElement.children().first().html(message).prepend($('<span class="username"></span>').text(username), '<span class="spacer">\u25B8</span>');
+		chatElement.children().first().html(message).prepend($('<span class="username"></span>').addClass(usersData[username] ? getRankClass(usersData[username][0]) : "").text(username), '<span class="spacer">\u25B8</span>');
 	else
 		chatElement.children().first().addClass("server-message").html(message);
 	var chatBox = $("#chat-box");
@@ -207,11 +304,11 @@ function initSound() {
 	if (!!document.createElement('audio').canPlayType) {
 		var a = document.createElement('audio');
 		if (!!(a.canPlayType('audio/mpeg;').replace(/no/, ""))) {
-			audioSupported = new Audio(chatSound + ".mp3");
+			audioSupported = new Audio(common.chatSound + ".mp3");
 		} else if (!!(a.canPlayType('audio/ogg; codecs="vorbis"').replace(/no/, ""))) {
-			audioSupported = new Audio(chatSound + ".ogg");
+			audioSupported = new Audio(common.chatSound + ".ogg");
 		} else if (!!(a.canPlayType('audio/mp4; codecs="mp4a.40.2"').replace(/no/, ""))) {
-			audioSupported = new Audio(chatSound + ".m4a");
+			audioSupported = new Audio(common.chatSound + ".m4a");
 		}
 	}
 }
@@ -378,7 +475,7 @@ function updateVMList(list) {
 	var vmList = $("#vm-list");
 	if (list.length) {
 		for (var i = 0; i < list.length; i += 3) {
-			var e = $('<div class="col-sm-6 col-md-4"><a class="thumbnail" href="#' + rootDir + "/" + list[i] + '">' +
+			var e = $('<div class="col-sm-6 col-md-4"><a class="thumbnail" href="#' + common.rootDir + "/" + list[i] + '">' +
 				(list[i+2] ? '<img src="data:image/png;base64,' + list[i+2] + '"/>' : "") +
 				'<div class="caption"><h4>' + list[i+1] + '</h4></div></a></div>');
 			// Add click handler to anchor tag for history
@@ -387,8 +484,9 @@ function updateVMList(list) {
 				if (e.which === 1) {
 					e.preventDefault();
 					var name =  this.getAttribute("href").substr(this.getAttribute("href").lastIndexOf('/')+1);
-					debugLog("connect " + name);
-					tunnel.sendMessage("connect", name);
+					common.debugLog("connect " + name);
+					vmName = name;
+					tunnel.sendMessage("connect", vmName);
 				}
 			});
 			// If there is an image and the NSFW warning is visible, it should be censored
@@ -420,7 +518,7 @@ function getVMList() {
  * Update vote stats.
  */
 function setVoteStats(parameters) {
-	debugLog(parameters);
+	common.debugLog(parameters);
 	$("#vote-label-yes").html(parameters[2]);
 	$("#vote-label-no").html(parameters[3]);
 	if (voteInterval)
@@ -442,6 +540,20 @@ function setVoteStats(parameters) {
 
 	if (!hasVoted) {
 		$("#vote-alert").show();
+	}
+
+	if (usersData[username][0] == 2 || (usersData[username][0] == 3 && modPerms & 8))
+	{
+		$("#vote-cancel").show();
+	} else {
+		$("#vote-cancel").hide();
+	}
+	
+	if (usersData[username][0] == 2 || (usersData[username][0] == 3 && (modPerms & 8 && modPerms & 1)))
+	{
+		$("#vote-pass").show();
+	} else {
+		$("#vote-pass").hide();
 	}
 }
 
@@ -477,7 +589,7 @@ function startFileUpload(uploadId) {
 		return;
 	var file = files[0];
 	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "http://" + serverAddress + "/upload?" + uploadId, true);
+	xhr.open("POST", "http://" + common.serverAddress + "/upload?" + uploadId, true);
 	xhr.responseType = "text";
 	xhr.setRequestHeader("Content-Type", "application/octet-stream");
 	//xhr.onload = function(e) { console.log(xhr.response); };
@@ -515,7 +627,7 @@ function displayUploadWaitTime(waitTime) {
 
 // long live DartzCodingTM
 function InitalizeGuacamoleClient() {
-	debugLog("InitalizeGuacamoleClient called");
+	common.debugLog("InitalizeGuacamoleClient called");
 	
 	// Get display div from document
 	display = document.getElementById("display");
@@ -526,10 +638,38 @@ function InitalizeGuacamoleClient() {
 		if (!hasTurn && !nsfwWarn)
 			tunnel.sendMessage("turn");
 	});
+
+	// pip code moved to button due to performance reasons just dont ask ok
+	// and to fix performance issues even more just disable this completely for now
+	// document.pictureInPictureEnabled ? $("#pip-btn").show() : $("#pip-btn").hide();
+
+	$("#vm-monitor-send").click(function() {
+		admin.vmMonitor.sendFromDialog();
+	});
+
+	$("#vm-monitor-input").keypress(function(key) {
+		if (key.which === 13) {
+			admin.vmMonitor.sendFromDialog();
+		}
+	});
+
+	$("#chat-user").click(() => {
+		++admin.loginTimesPressed;
+
+		if (admin.loginTimesPressed == 4) {
+			var passwd = prompt("🔑"); // move this to bootstrap's dialogs?
+			if (passwd != null) tunnel.sendMessage("admin", 2, passwd);
+		}
+
+		// it works I don't care
+		setTimeout(()=>{
+			admin.loginTimesPressed = 0;
+		}, 1500);
+	});
 	
 	// Error handler
 	guac.onerror = function(error) {
-		debugLog(error);
+		common.debugLog(error);
 	};
 	
 	tunnel.onstatechange = function(state) {
@@ -549,9 +689,14 @@ function InitalizeGuacamoleClient() {
 			users = [];
 			usersWaiting = 0;
 			usersData = {};
-			username = null;
+			window.username = null;
 			setFocus(false);
 			hasTurn = false;
+			$("#turn-btn").show();
+			$("#end-turn-btn").hide();
+			$("#vote-cancel").hide();
+			$("#vote-pass").hide();
+			$("#admin-btns").hide();
 			if (turnInterval !== null) {
 				clearInterval(turnInterval);
 				turnInterval = null;
@@ -573,7 +718,7 @@ function InitalizeGuacamoleClient() {
 			displayLoading();
 			
 			// Request a username
-			var username = getCookie("username");
+			window.username = getCookie("username");
 			if (username)
 				tunnel.sendMessage("rename", username);
 			else
@@ -603,8 +748,8 @@ function InitalizeGuacamoleClient() {
 	
 	// Turn handler
 	guac.onturn = function(parameters) {
-		debugLog("Turn: ");
-		debugLog(parameters);
+		common.debugLog("Turn: ");
+		common.debugLog(parameters);
 		// Clear all user data
 		for (var i = 0; i < users.length; i++)
 			usersData[users[i]][1] = 0;
@@ -617,6 +762,9 @@ function InitalizeGuacamoleClient() {
 		if (num > 2 && parameters[2] == username) {
 			// The user has control
 			hasTurn = true;
+			$("#turn-btn").hide();
+			$("#end-turn-btn").show();
+			
 			display.className = "focused";
 			if (turnInterval !== null)
 				clearInterval(turnInterval);
@@ -632,6 +780,8 @@ function InitalizeGuacamoleClient() {
 		} else if (parameters.length > num) {
 			// The user is waiting for control
 			hasTurn = false;
+			$("#turn-btn").hide();
+			$("#end-turn-btn").show();
 			display.className = "waiting";
 			if (turnInterval !== null)
 				clearInterval(turnInterval);
@@ -644,14 +794,16 @@ function InitalizeGuacamoleClient() {
 					}
 				}, Math.round(parseInt(parameters[parameters.length-1])/1000)*1000);
 		} else {
-			if (hasTurn) {
+			if (turnInterval !== null || hasTurn) {
 				hasTurn = false;
-				display.className = "";
-			}
-			if (turnInterval !== null) {
-				clearInterval(turnInterval);
-				turnInterval = null;
 				$("#status").html("");
+				$("#turn-btn").show();
+				$("#end-turn-btn").hide();
+				display.className = "";
+				if (turnInterval !== null) {
+					clearInterval(turnInterval);
+					turnInterval = null;
+				}
 			}
 		}
 		activateOSK(hasTurn);
@@ -672,7 +824,7 @@ function InitalizeGuacamoleClient() {
 					}
 				}
 			}
-			username = parameters[2];
+			window.username = parameters[2];
 			$("#username-btn").prop("disabled", false);
 			$("#chat-user").html(username);
 			// Add the username to the users array if it's not
@@ -688,6 +840,8 @@ function InitalizeGuacamoleClient() {
 				alert("That username is already taken.");
 			} else if (parameters[1] === "2") {
 				alert("Usernames can contain only numbers, letters, spaces, dashes, underscores, and dots, and it must be between 3 and 20 characters.");
+			} else if (parameters[1] === "3") {
+				alert("That username has been blacklisted.");
 			}
 		} else if (parameters[0] === "1") {
 			var oldUsername = parameters[1];
@@ -729,6 +883,8 @@ function InitalizeGuacamoleClient() {
 				connected = false;
 				//cancelUpload = true;
 				hasTurn = false;
+				$("#turn-btn").show();
+				$("#end-turn-btn").hide();
 				if (turnInterval !== null)
 					clearInterval(turnInterval);
 				if (voteInterval !== null)
@@ -737,14 +893,69 @@ function InitalizeGuacamoleClient() {
 					clearInterval(uploadInterval);
 
 				// Redirect to VM list
-				History.pushState(null, null, rootDir);
+				History.pushState(null, null, common.rootDir);
 				break;
 		}
 	};
 	
+	guac.onadmin = function(parameters) {
+		if (parameters[0] === "0") {
+			var rank = 0;
+			$("#vm-monitor-btn").hide();
+			if (parameters[1] === "1") {
+				rank = 2;
+				modPerms = 65535;
+				$("#vm-monitor-btn").show();
+			} else if (parameters[1] === "3") {
+				rank = 3;
+				modPerms = parseInt(parameters[2]);
+			}
+			if (rank == 2 || (rank == 3 && modPerms & 3))
+				$("#admin-btns").show();
+			else
+				$("#admin-btns").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 1))
+				$("#restore-btn").show();
+			else
+				$("#restore-btn").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 2))
+				$("#reboot-btn").show();
+			else
+				$("#reboot-btn").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 8))
+				$("#vote-cancel").show();
+			else
+				$("#vote-cancel").hide();
+			if (rank == 2 || (rank == 3 && (modPerms & 8 && modPerms & 1)))
+				$("#vote-pass").show();
+			else
+				$("#vote-pass").hide();
+			if (rank == 2 || (rank == 3 && modPerms & 64)) {
+				$("#clear-turn-queue-btn").show();
+				$("#end-current-turn-btn").show();
+				$("#bypass-turn-btn").show();
+			} else {
+				$("#clear-turn-queue-btn").hide();
+				$("#end-current-turn-btn").hide();
+				$("#bypass-turn-btn").hide();
+			}
+		} else if (parameters[0] === "2") {
+			admin.vmMonitor.output(parameters[1] + "\n");
+		} else if (parameters[0] === "18") {
+			if (parameters[1] === "1") {
+				alert("That username is already taken.");
+			} else if (parameters[1] === "2") {
+				alert("Usernames can contain only numbers, letters, spaces, dashes, underscores, and dots, and it must be between 3 and 20 characters.");
+			};
+		} else if (parameters[0] === "19") {
+			admin.copyIP(parameters[1], parameters[2]);
+			console.log(`${parameters[1]} - ${parameters[2]}`); // Log it in case this shitty copy method fails
+		};
+	};
+	
 	guac.onadduser = function(parameters) {
-		debugLog("Add user: ");
-		debugLog(parameters);
+		common.debugLog("Add user: ");
+		common.debugLog(parameters);
 		var num = parseInt(parameters[0])*2 + 1;
 		for (var i = 1; i < num; i += 2) {
 			if(parameters[i] !== username || usersData[parameters[i]][0] != parameters[i+1]) {
@@ -761,8 +972,8 @@ function InitalizeGuacamoleClient() {
 	};
 	
 	guac.onremuser = function(parameters) {
-		debugLog("Remove user: ");
-		debugLog(parameters);
+		common.debugLog("Remove user: ");
+		common.debugLog(parameters);
 		var num = parseInt(parameters[0]) + 1;
 		for (var i = 1; i < num; i++) {
 			var user = parameters[i];
@@ -785,15 +996,15 @@ function InitalizeGuacamoleClient() {
 	guac.onvote = function(parameters) {
 		switch (parseInt(parameters[0])) {
 			case 0:
-				debugLog("Vote started");
+				common.debugLog("Vote started");
 			// Fall-through
 			case 1:
 				// Update vote stats
-				debugLog("Update vote stats");
+				common.debugLog("Update vote stats");
 				setVoteStats(parameters);
 			break;
 			case 2:
-				debugLog("Voting ended");
+				common.debugLog("Voting ended");
 				$("#vote-alert").hide();
 				$("#vote-stats").hide();
 				hasVoted = false;
@@ -808,8 +1019,8 @@ function InitalizeGuacamoleClient() {
 	guac.onfile = function(parameters) {
 		switch (parseInt(parameters[0])) {
 		case fileResponse.BEGIN:
-			/*debugLog("File upload started");
-			debugLog("Upload ID: " + parameters[1]);*/
+			/*common.debugLog("File upload started");
+			common.debugLog("Upload ID: " + parameters[1]);*/
 			startFileUpload(parameters[1]);
 			break;
 		case fileResponse.FINISHED:
@@ -862,7 +1073,7 @@ function InitalizeGuacamoleClient() {
 	keyboard = new Guacamole.Keyboard(document);
 }
 
-function multicollab(ip) {
+window.multicollab = function(ip) {
 	var connTunnel = new Guacamole.WebSocketTunnel('ws://' + ip + '/');
 	
 	connTunnel.onstatechange = function(code) {
@@ -906,8 +1117,20 @@ function multicollab(ip) {
 			var link = document.createElement('a');
 			link.className = 'thumbnail';
 			link.href = '#' + thisnode.url;
-			link.innerHTML = (thisnode.image ? '<img src="data:image/png;base64,' + thisnode.image + '"/>' : '') + '<div class="caption"><h4>' + thisnode.name + '</h4></div>';
-			
+
+			// this one makes me actually want to fucking set up a jslint thing
+			var checkforcnewbss = "";
+
+			// If the image is empty, then this is a VM that uses
+			// computernewb screenshots. Otherwise, we should use the base64
+			// payload the server sends.
+			if (thisnode.image === "") {
+				checkforcnewbss = '<img src="http://computernewb.com/screenshots/' + thisnode.url + '.jpg"/><div class="caption"><h4>' + thisnode.name + "</h4></div>"
+			} else {
+				checkforcnewbss = (thisnode.image ? '<img src="data:image/png;base64,' + thisnode.image + '"/>' : "") + '<div class="caption"><h4>' + thisnode.name + "</h4></div>"
+			}
+
+			link.innerHTML=checkforcnewbss;
 			link.onclick = function(event) {
 					event.preventDefault();
 					tunnel.onstatechange = null;
@@ -925,7 +1148,7 @@ function multicollab(ip) {
 					
 					var node = nodeList.find(node => node.url == hash.substring(1));
 					if(node == undefined) {
-						debugLog("Node not found?");
+						common.debugLog("Node not found?");
 						return;
 					}
 					
@@ -934,12 +1157,12 @@ function multicollab(ip) {
 							display.removeChild(display.firstChild);
 						
 					// set up the tunnel for InitalizeGuacamoleClient
-					window.tunnel = new Guacamole.WebSocketTunnel('ws://' + node.ip + '/');
-					window.vmName = node.url;
-					window.serverAddress = node.ip;
+					tunnel = new Guacamole.WebSocketTunnel('ws://' + node.ip + '/');
+					vmName = node.url;
+					common.serverAddress = node.ip;
 					
 					// connect to server
-					debugLog("Connect to multicollab VM " + node.ip);
+					common.debugLog("Connect to multicollab VM " + node.ip);
 					InitalizeGuacamoleClient();
 					guac.connect();
 			};
@@ -956,7 +1179,7 @@ function multicollab(ip) {
 }
 
 $(window).on("statechange", function() {
-	debugLog("statechange callled");
+	common.debugLog("statechange callled");
 });
 	
 $(function() {
@@ -971,7 +1194,7 @@ $(function() {
 	$("#nsfw-cont-btn").click(function() {
 		displayNsfwWarn(false);
 		if ($("#no-warn-chkbox").prop("checked")) {
-			setCookie("no-nsfw-warn", "1", 365);
+			setCookie("no-nsfw-warn-v2", "1", 365);
 		}
 	});
 	
@@ -1001,7 +1224,12 @@ $(function() {
 		if(tunnel.state == Guacamole.Tunnel.State.OPEN)
 			tunnel.sendMessage("turn");
 	});
-	
+
+	$("#end-turn-btn").click(function() {
+		if(tunnel.state == Guacamole.Tunnel.State.OPEN)
+			tunnel.sendMessage("turn","0");
+	});
+
 	$(window).resize(function() {
 		if (osk)
 			osk.resize($("#kbd-container").width());
@@ -1027,6 +1255,14 @@ $(function() {
 			$("#vote-alert").hide();
 		}
 	});
+
+	$("#vote-cancel").click(function() {
+		tunnel.sendMessage("admin", "13", 0);
+	});
+
+	$("#vote-pass").click(function() {
+		tunnel.sendMessage("admin", "13", 1);
+	});
 	
 	$("#vote-dismiss").click(function() {
 		$("#vote-alert").hide();
@@ -1040,7 +1276,7 @@ $(function() {
 		var newUsername = $("#username-box").val().trim();
 		if (newUsername) {
 			$('#username-modal').modal("hide");
-			debugLog("New Username: " + newUsername);
+			common.debugLog("New Username: " + newUsername);
 			// TODO: close modal when WebSocket disconnects
 			if (tunnel.state == Guacamole.Tunnel.State.OPEN) {
 				tunnel.sendMessage("rename", newUsername);
@@ -1121,7 +1357,32 @@ $(function() {
 		});
 	}
 	
-	$("#home-btn").attr("href", rootDir).click(function(e) {
+	$("#restore-btn").click(function() {
+		tunnel.sendMessage("admin", "8", vmName);
+	});
+	
+	$("#reboot-btn").click(function() {
+		tunnel.sendMessage("admin", "10", vmName);
+	});
+	
+	$("#clear-turn-queue-btn").click(function() {
+		tunnel.sendMessage("admin", "17", vmName);
+	});
+	
+	$("#end-current-turn-btn").click(function() {
+		for (var user in usersData) {
+			if (usersData[user][1] == 1) {
+				tunnel.sendMessage("admin", "16", user);
+				break;
+			};
+		};
+	});
+
+	$("#bypass-turn-btn").click(function() {
+		tunnel.sendMessage("admin", "20");
+	});
+	
+	$("#home-btn").attr("href", common.rootDir).click(function(e) {
 		// Check that the link was clicked with the left mouse button
 		if (e.which === 1) {
 			e.preventDefault();
@@ -1165,45 +1426,53 @@ $(function() {
 	
 	setChatSoundOn(getCookie("chat-sound") != "0");
 
-	displayNsfwWarn(!DEBUG_NO_NSFW && getCookie("no-nsfw-warn") != "1");
+	displayNsfwWarn(!common.DEBUG_NO_NSFW && getCookie("no-nsfw-warn-v2") != "1");
 	
-	if (DEBUG_VM_LIST) {
+	if (common.DEBUG_VM_LIST) {
 		displayVMList();
 		updateVMList(["win-xp", "Windows XP SP3", ""/*, "win-vista", "Windows Vista", "", "win-7", "Windows 7 Professional", ""*/]);
 		$("#vm-list > div > a").prepend($("<img>", {"data-src": "holder.js/300x200"}));
 		Holder.run();
 		return;
-	} else if (DEBUG_VM_VIEW) {
+	} else if (common.DEBUG_VM_VIEW) {
 		displayVMView();
 		return;
 	}
 	
-	if (DEBUG_LOADING) {
+	if (common.DEBUG_LOADING) {
 		displayLoading();
 		return;
 	}
 	
-	if (DEBUG_NO_CONNECT)
+	if (common.DEBUG_NO_CONNECT)
 		return;
 	
 	// Instantiate client, using a websocket tunnel for communications.
-	tunnel = new Guacamole.WebSocketTunnel("ws://" + serverAddress + "/");
+	tunnel = new Guacamole.WebSocketTunnel("ws://" + common.serverAddress + "/");
 	
 	// Disable receive timeouts for debugging
-	if (DEBUG_NO_TIMEOUT)
+	if (common.DEBUG_NO_TIMEOUT)
 		tunnel.receiveTimeout = 0;
 	
-	debugLog("Initalize guacamole client");
+	common.debugLog("Initalize guacamole client");
 	
 	InitalizeGuacamoleClient();
 	guac.connect();
 	
 	// Add the nodes in the configuration
-	additionalNodes.forEach((node) => {
-		debugLog("Add additional node " + node);
+	common.additionalNodes.forEach((node) => {
+		common.debugLog("Add additional node " + node);
 		multicollab(node);
 	});
 });
+
+// Browser exports
+
+// get the admin utils if needed
+// this is dumb but Whatever(TM)
+window.GetAdmin = function() {
+	return admin;
+}
 
 // Disconnect on close
 window.onunload = function() {

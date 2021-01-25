@@ -3,6 +3,11 @@
     <head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+		<meta property="og:title" content="Control Collaborative Virtual Machines!"/>
+		<meta property="og:url" content="http://computernewb.com/collab-vm"/>
+		<meta property="og:description" content="Control a computer (Windows, Linux, MacOS, etc) from your browser, for 18 seconds at a time, with strangers!"/>
+		<meta property="og:image" content="http://computernewb.com/starter.jpg"/>
 		<title>Control Collaborative Virtual Machines!</title>
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
@@ -12,12 +17,7 @@
 		<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 		<!-- inject:js -->
-		<script type="text/javascript">History = { options: { html4Mode: true } }</script>
-		<script type="text/javascript" src="../js/collab-vm/jquery.history.js"></script>
-		<script type="text/javascript" src="guacamole.min.js"></script>
-		<script type="text/javascript" src="../js/collab-vm/common.js"></script>
-		<script type="text/javascript" src="../js/collab-vm/en-us-qwerty.js"></script>
-		<script type="text/javascript" src="../js/collab-vm/collab-vm.js"></script>
+		<script type="text/javascript" src="all.min.js"></script>
 		<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/holder/2.9.1/holder.min.js"></script>-->
 		<!-- endinject -->
 	   	<!-- inject:win-logo-ascii --><!-- endinject -->
@@ -69,6 +69,25 @@
 				</div>
 			</div>
 		</div>
+		<div class="modal fade" id="vm-monitor-modal" tabindex="-1" role="dialog" aria-labelledby="vm-monitor-modal-label">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+				  <div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="vm-monitor-modal-label">VM Monitor</h4>
+				  </div>
+				  <div class="modal-body">
+					<textarea id="vm-monitor-output" class="form-control form-group" style="background-color:inherit;resize:vertical" rows="10" readonly="readonly"></textarea>
+					<div class="input-group form-group">
+					  <input type="text" class="form-control" id="vm-monitor-input">
+					  <span class="input-group-btn">
+						<button class="btn btn-default" type="button" id="vm-monitor-send">Send</button>
+					  </span>
+					</div>
+				  </div>
+				</div>
+			</div>
+		</div>
 		<div class="container-fluid">
 			<div id="loading" style="text-align:center;width: 100%;height:100%;position:fixed;display: none;">
 				<div style="width:10%;height:10vw;position:absolute;display: inline-table;margin-left: -10vw;">
@@ -91,7 +110,7 @@
 			<h4 id="warning" style="display: none;">
 				<div id="warn-text" style="display: inline;"><h2>Warning</h2>As anyone can do anything on these PCs, this site may contain NSFW content.<br>
 				<div class="checkbox">
-					<label><input type="checkbox" id="no-warn-chkbox">Don't warn me again</label><br>
+					<label><input type="checkbox" id="no-warn-chkbox">Don't warn me again (I have accepted the <a href="/collab-vm/rules">CollabVM Rules</a>)</input></label><br>
 				</div>
 				<button class="btn btn-default" id="nsfw-cont-btn">Continue</button></div>
 			</h4>
@@ -141,6 +160,8 @@
 					</div>
 					<div style="display:none;" id="vote-stats">
 						<h3><small>Votes for VM Reset (<span id="vote-time"></span>)</small></h3>
+						<button style="display:none;" type="button" class="btn btn-warning" id="vote-pass">Pass Vote</button>
+						<button style="display:none;" type="button" class="btn btn-warning" id="vote-cancel">Cancel Vote</button>
 						<h4><span class="label label-success">Yes: <span id="vote-label-yes"></span></span> <span class="label label-danger">No: <span id="vote-label-no"></span></span></h4>
 					</div>
 					<!--<div class="progress">
@@ -151,12 +172,22 @@
 							<span>No</span>
 						</div>
 					</div>-->
-					<div>
+					<div id="btns">
 						<button class="btn btn-default" type="button" id="turn-btn">Take Turn</button>
+						<button style="display:none;" class="btn btn-default" type="button" id="end-turn-btn">End Turn</button>
 						<button class="btn btn-default" type="button" id="osk-btn">Keyboard</button>
-						<button class="btn btn-default" type="button"  data-toggle="modal" data-target="#username-modal" id="username-btn" disabled>Change Username</button>
+						<button class="btn btn-default" type="button" data-toggle="modal" data-target="#username-modal" id="username-btn" disabled>Change Username</button>
 						<button style="display: none;" class="btn btn-default" type="button" id="vote-btn">Vote for Reset</button>
+						<button style="display: none;" class="btn btn-default" type="button" id="pip-btn">Picture-in-Picture</button>
 						<button class="btn btn-default" type="button" id="upload-options-btn">Upload File</button>
+						<div id="admin-btns" style="display:none;"><br>
+							<button style="display:none;" class="btn btn-default" type="button" id="restore-btn">Restore VM</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="reboot-btn">Reboot VM</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="clear-turn-queue-btn">Clear Turn Queue</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="end-current-turn-btn">End Current Turn</button>
+							<button style="display:none;" class="btn btn-default" type="button" id="bypass-turn-btn">Bypass Turn</button>
+							<button style="display:none;" class="btn btn-default" type="button" data-toggle="modal" data-target="#vm-monitor-modal" id="vm-monitor-btn">VM Monitor</button>
+						</div>
 						<div id="file-upload" class="form-inline" style="display: none;">
 							<input class="form" id="upload-input" type="file">
 							<!--<label for="filename-box">Filename</label><input type="text" class="form-control" id="filename-box" placeholder="filename">-->

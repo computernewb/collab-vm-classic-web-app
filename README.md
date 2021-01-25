@@ -1,3 +1,5 @@
+![[collab-vm-web-app] - Node.js Gulp](https://github.com/yellows111/collab-vm-web-app/workflows/%5Bcollab-vm-web-app%5D%20-%20Node.js%20Gulp/badge.svg)
+
 # collab-vm-web-app
 The Collab VM Web App powers the website-portion of Collab VM and the Virus Farm.
 

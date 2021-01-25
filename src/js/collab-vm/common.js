@@ -1,62 +1,41 @@
-/**
- * Set to true when testing locally.
- * @define {boolean}
- */
-var DEBUG = false;
-/**
- * Prevent the Guacamole client from timing-out while debugging.
- * @define {boolean}
- */
-var DEBUG_NO_TIMEOUT = false;
-/**
- * Disable the NSFW warning.
- * @define {boolean}
- */
-var DEBUG_NO_NSFW = false;
-/**
- * Disable connecting to the WebSocket server.
- * @define {boolean}
- */
-var DEBUG_NO_CONNECT = false;
-/** @define {boolean} */
-var DEBUG_LOADING = false;
-/** @define {boolean} */
-var DEBUG_VM_LIST = false;
-/** @define {boolean} */
-var DEBUG_VM_VIEW = false;
+// CollabVM webapp configuration
 
-/** @define {boolean} */
-var DEBUG_LOG = false;
+const root="/collab-vm/";
 
-function debugLog(msg) {
-	if (DEBUG_LOG)
-		console.log(msg);
-}
+export default {
+	DEBUG: false,
+	DEBUG_NO_TIMEOUT: false,
+	DEBUG_NO_NSFW: false,
+	DEBUG_NO_CONNECT: false, // is this used?
+	DEBUG_VM_LIST: false,
+	DEBUG_VM_LIST: false,
 
-/** @const
- * The root directory of the collab-vm project with a
- * forward slash appended to it.
- * This is determined at runtime to allow the project to be
- * relocated without needing to recompile the javascript.
- * @type {string}
- */
-var rootDir = "/collab-vm/";
+	debugLog: function() {
+		if(this.DEBUG)
+			console.log.apply(null, arguments);
+	},
 
-/** @const
- * The name of the chat sound.
- */
-var chatSound = rootDir + "notify";
+	/** @const
+	 * The root directory of the collab-vm project with a
+	 * forward slash appended to it.
+	 * This is determined at runtime to allow the project to be
+	 * relocated without needing to recompile the javascript.
+	 * @type {string}
+	 */
+	rootDir: root,
+	chatSound: root + "notify",
 
-/**
- * The main node this webapp is configured to connect to.
- * @const 
- */
-var serverAddress = "localhost:8081";
+	/**
+	 * The main node this webapp is configured to connect to.
+	 * @const
+	 */
+	serverAddress: window.location.host,
 
-/** 
- * Additional nodes to connect to.
- * Uses multicollab() to do so
- * @const
- */
-var additionalNodes = [
-];
+	/**
+	 * Additional nodes to connect to.
+	 * Uses multicollab() to do so
+	 * @const
+	 */
+	additionalNodes: [
+	]
+};

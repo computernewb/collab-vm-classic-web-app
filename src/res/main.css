@@ -60,11 +60,15 @@ table {
 .current-user.list-group-item {
 	font-style: italic;
 }
-.admin.list-group-item {
+.admin.list-group-item, .message-pane > li > div > span.admin {
     font-weight: bold;
     color: red;
 }
-.dev.list-group-item {
+.moderator.list-group-item, .message-pane > li > div > span.moderator {
+    font-weight: bold;
+    color: green;
+}
+.dev.list-group-item, .message-pane > li > div > span.dev {
     font-weight: bold;
     color: blue;
 }
@@ -474,4 +478,9 @@ table {
 @keyframes sk-circleFadeDelay {
   0%, 39%, 100% { opacity: 0; }
   40% { opacity: 1; } 
+}
+
+#vm-list {
+  display: flex;
+  flex-wrap: wrap;
 }

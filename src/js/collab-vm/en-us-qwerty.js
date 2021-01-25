@@ -1,4 +1,4 @@
-var en_us_qwerty_keyboard = {
+export var en_us_qwerty_keyboard = {
 
     "language" : "en_US",
     "type"     : "qwerty",
