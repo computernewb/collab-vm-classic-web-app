@@ -1291,6 +1291,26 @@ $(function() {
 			$("#username-ok-btn").trigger("click");
 		}
 	});
+
+	$("#autotype-ok-btn").click(function() {
+		var Text = $("#autotype-box").val();
+		if (Text) {
+			$('#autotype-modal').modal("hide");
+			common.debugLog("Autotype: " + Text);
+			// TODO: close modal when WebSocket disconnects
+			if (tunnel.state == Guacamole.Tunnel.State.OPEN) {
+				tunnel.sendMessage("autotype", Text);
+			}
+		}
+	});
+	
+	$("#autotype-box").keydown(function(e) {
+		if (e.which === 13) {
+			// Enter key
+			e.preventDefault();
+			$("#autotype-ok-btn").trigger("click");
+		}
+	});
 	
 	// TODO: Add drag and drop support for file uploads
 	/*$("#display").on("dragenter", function(e) {
